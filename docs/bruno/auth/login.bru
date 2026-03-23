@@ -1,0 +1,30 @@
+meta {
+  name: login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "identifier": "xandex",
+    "password": "123456"
+  }
+}
+
+script:post-response {
+  const resp = res.getBody()
+  if (!resp.token) {
+    throw new Error("Token não veio na resposta")
+  }
+  bru.setVar("token", resp.token)
+}
