@@ -1,15 +1,16 @@
 meta {
-  name: Untitled
+  name: List available avatars
   type: http
   seq: 1
 }
 
 get {
-  url: 
+  url: {{baseUrl}}/files/avatars
   body: none
   auth: inherit
 }
 
 settings {
   encodeUrl: true
+  timeout: 0
 }
