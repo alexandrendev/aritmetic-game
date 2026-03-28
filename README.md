@@ -30,3 +30,9 @@ Exemplos:
 docker compose run --rm composer install
 docker compose run --rm composer require symfony/orm-pack
 ```
+
+## Rodar Comando seeder para avatars
+
+```bash
+docker compose exec php php bin/console app:seed:avatars
+```
