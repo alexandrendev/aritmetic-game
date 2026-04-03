@@ -1,0 +1,729 @@
+openapi: 3.0.3
+info:
+  title: Aritmetic Game API
+  description: API do jogo de aritmética — inclui autenticação, guests, avatares, modo batalha inteligente e chat.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Local (Docker)
+
+tags:
+  - name: Auth
+    description: Registro, login e JWT
+  - name: Guests
+    description: Perfis de jogadores convidados
+  - name: Files
+    description: Avatares e arquivos
+  - name: Battle
+    description: Modo Batalha Inteligente (salas, rodadas, ferramentas)
+  - name: Chat
+    description: Chat da sala de batalha
+
+paths:
+  # ─── AUTH ────────────────────────────────────────────
+  /api/register:
+    post:
+      tags: [Auth]
+      summary: Registrar novo usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username:
+                  type: string
+                  example: jogador1
+                email:
+                  type: string
+                  format: email
+                  example: jogador1@email.com
+                password:
+                  type: string
+                  minLength: 6
+                  example: senha123
+      responses:
+        '201':
+          description: Usuário criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  username:
+                    type: string
+                  email:
+                    type: string
+        '400':
+          description: Dados inválidos
+        '409':
+          description: Username ou email já em uso
+
+  /api/login:
+    post:
+      tags: [Auth]
+      summary: Login (retorna JWT)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: jogador1
+                password:
+                  type: string
+                  example: senha123
+      responses:
+        '200':
+          description: Login bem-sucedido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  refresh_token:
+                    type: string
+        '401':
+          description: Credenciais inválidas
+
+  /api/me:
+    get:
+      tags: [Auth]
+      summary: Dados do usuário autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dados do usuário
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Não autenticado
+
+  /api/token/refresh:
+    post:
+      tags: [Auth]
+      summary: Renovar JWT com refresh token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Token renovado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  refresh_token:
+                    type: string
+
+  # ─── FILES ───────────────────────────────────────────
+  /files/avatars:
+    get:
+      tags: [Files]
+      summary: Listar avatares disponíveis
+      responses:
+        '200':
+          description: Lista de avatares
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    path:
+                      type: string
+                      example: http://localhost:8080/avatars/avatar1.png
+
+  # ─── GUESTS ──────────────────────────────────────────
+  /guests:
+    post:
+      tags: [Guests]
+      summary: Criar novo guest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nickname, avatarId]
+              properties:
+                nickname:
+                  type: string
+                  example: MathKing
+                avatarId:
+                  type: integer
+                  example: 1
+      responses:
+        '201':
+          description: Guest criado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  nickname:
+                    type: string
+                  avatar:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      url:
+                        type: string
+        '404':
+          description: Avatar não encontrado
+
+  # ─── BATTLE ROOMS ────────────────────────────────────
+  /battle/rooms:
+    post:
+      tags: [Battle]
+      summary: Criar sala de batalha
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [guestId]
+              properties:
+                guestId:
+                  type: integer
+                  example: 1
+                totalRounds:
+                  type: integer
+                  enum: [5, 10, 15, 20, 25, 30]
+                  description: Número de rodadas (padrão é calculado pelo número de jogadores)
+                maxPlayers:
+                  type: integer
+                  minimum: 2
+                  maximum: 60
+                  example: 10
+      responses:
+        '201':
+          description: Sala criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BattleRoom'
+        '404':
+          description: Guest não encontrado
+
+  /battle/rooms/{id}:
+    get:
+      tags: [Battle]
+      summary: Ver detalhes da sala
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      responses:
+        '200':
+          description: Detalhes da sala
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BattleRoom'
+        '404':
+          description: Sala não encontrada
+
+  /battle/rooms/{id}/join:
+    post:
+      tags: [Battle]
+      summary: Entrar na sala
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [guestId]
+              properties:
+                guestId:
+                  type: integer
+                  example: 2
+      responses:
+        '200':
+          description: Entrou na sala
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  playerId:
+                    type: integer
+                  room:
+                    $ref: '#/components/schemas/BattleRoom'
+        '400':
+          description: Sala cheia ou já em andamento
+        '404':
+          description: Sala ou guest não encontrado
+
+  /battle/rooms/{id}/ready:
+    post:
+      tags: [Battle]
+      summary: Marcar jogador como pronto
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId]
+              properties:
+                playerId:
+                  type: integer
+                  example: 1
+      responses:
+        '200':
+          description: Jogador marcado como pronto
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  playerId:
+                    type: integer
+                  status:
+                    type: string
+                    example: ready
+                  allReady:
+                    type: boolean
+        '404':
+          description: Sala ou jogador não encontrado
+
+  /battle/rooms/{id}/start:
+    post:
+      tags: [Battle]
+      summary: Iniciar a batalha
+      description: Só funciona quando todos os jogadores estão prontos (mínimo 2).
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      responses:
+        '200':
+          description: Batalha iniciada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: started
+                  room:
+                    $ref: '#/components/schemas/BattleRoom'
+                  question:
+                    $ref: '#/components/schemas/Question'
+        '400':
+          description: Nem todos prontos
+        '404':
+          description: Sala não encontrada
+
+  /battle/rooms/{id}/answer:
+    post:
+      tags: [Battle]
+      summary: Enviar resposta
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId, answer, timeMs]
+              properties:
+                playerId:
+                  type: integer
+                  example: 1
+                operation:
+                  type: string
+                  description: Operação da pergunta atual
+                  example: "7x8"
+                answer:
+                  type: string
+                  description: Resposta do jogador (número)
+                  example: "56"
+                timeMs:
+                  type: integer
+                  description: Tempo de resposta em milissegundos
+                  example: 3200
+                usedTool:
+                  type: boolean
+                  default: false
+                  description: Se o jogador usou ferramenta nesta questão
+      responses:
+        '200':
+          description: Resposta processada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  correct:
+                    type: boolean
+                  pointsEarned:
+                    type: integer
+                  livesRemaining:
+                    type: integer
+                  status:
+                    type: string
+                    enum: [playing, ghost]
+        '400':
+          description: Jogador eliminado
+        '404':
+          description: Sala ou jogador não encontrado
+
+  /battle/rooms/{id}/next-round:
+    post:
+      tags: [Battle]
+      summary: Avançar para a próxima rodada
+      description: |
+        Retorna um dos seguintes status:
+        - `next_round` — nova rodada com pergunta
+        - `sudden_death` — empate, morte súbita
+        - `finished` — batalha encerrada com ranking
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      responses:
+        '200':
+          description: Resultado da rodada
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/NextRoundResponse'
+                  - $ref: '#/components/schemas/SuddenDeathResponse'
+                  - $ref: '#/components/schemas/BattleFinishedResponse'
+        '404':
+          description: Sala não encontrada
+
+  /battle/rooms/{id}/tool:
+    post:
+      tags: [Battle]
+      summary: Usar ferramenta de ajuda
+      description: |
+        Ferramentas disponíveis (1 uso cada por partida):
+        - `hint` — dica com faixa de valor
+        - `eliminate` — remove 2 opções erradas
+        - `skip` — pula sem perder vida (0 pontos)
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId, tool, operation]
+              properties:
+                playerId:
+                  type: integer
+                  example: 1
+                tool:
+                  type: string
+                  enum: [hint, eliminate, skip]
+                operation:
+                  type: string
+                  description: Operação atual (ex. 7x8)
+                  example: "7x8"
+      responses:
+        '200':
+          description: Ferramenta usada
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    properties:
+                      tool:
+                        type: string
+                        example: hint
+                      hint:
+                        type: string
+                        example: "O resultado está entre 50 e 62"
+                  - type: object
+                    properties:
+                      tool:
+                        type: string
+                        example: eliminate
+                      reducedOptions:
+                        $ref: '#/components/schemas/Question'
+                  - type: object
+                    properties:
+                      tool:
+                        type: string
+                        example: skip
+                      skipped:
+                        type: boolean
+        '400':
+          description: Ferramenta já usada ou jogador eliminado
+        '404':
+          description: Sala ou jogador não encontrado
+
+  # ─── CHAT ────────────────────────────────────────────
+  /battle/rooms/{id}/chat:
+    post:
+      tags: [Chat]
+      summary: Enviar mensagem no chat da sala
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [guestId, message]
+              properties:
+                guestId:
+                  type: integer
+                  example: 1
+                message:
+                  type: string
+                  maxLength: 200
+                  example: "Boa sorte a todos!"
+                type:
+                  type: string
+                  enum: [message, reaction]
+                  default: message
+      responses:
+        '201':
+          description: Mensagem enviada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessage'
+        '400':
+          description: Mensagem vazia
+        '404':
+          description: Sala ou guest não encontrado
+
+    get:
+      tags: [Chat]
+      summary: Listar mensagens do chat da sala
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      responses:
+        '200':
+          description: Lista de mensagens (mais recentes primeiro)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatMessage'
+        '404':
+          description: Sala não encontrada
+
+# ─── COMPONENTS ──────────────────────────────────────────
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    RoomId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: ID da sala de batalha
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        email:
+          type: string
+
+    BattleRoom:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [waiting, in_progress, finished]
+        totalRounds:
+          type: integer
+        currentRound:
+          type: integer
+        maxPlayers:
+          type: integer
+        creator:
+          type: object
+          properties:
+            id:
+              type: integer
+            nickname:
+              type: string
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/BattlePlayer'
+
+    BattlePlayer:
+      type: object
+      properties:
+        id:
+          type: integer
+        guestId:
+          type: integer
+        nickname:
+          type: string
+        status:
+          type: string
+          enum: [waiting, ready, playing, eliminated, ghost]
+        lives:
+          type: integer
+          maximum: 3
+        score:
+          type: integer
+        tools:
+          type: object
+          properties:
+            hint:
+              type: boolean
+            eliminate:
+              type: boolean
+            skip:
+              type: boolean
+
+    Question:
+      type: object
+      properties:
+        operation:
+          type: string
+          example: "7x8"
+        correctAnswer:
+          type: integer
+          example: 56
+        options:
+          type: array
+          items:
+            type: integer
+          example: [48, 56, 63, 54]
+
+    NextRoundResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: next_round
+        round:
+          type: integer
+        totalRounds:
+          type: integer
+        alivePlayers:
+          type: integer
+        question:
+          $ref: '#/components/schemas/Question'
+
+    SuddenDeathResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: sudden_death
+        tiedPlayers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              guestId:
+                type: integer
+              nickname:
+                type: string
+              lives:
+                type: integer
+              score:
+                type: integer
+        question:
+          $ref: '#/components/schemas/Question'
+
+    BattleFinishedResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: finished
+        ranking:
+          type: array
+          items:
+            type: object
+            properties:
+              position:
+                type: integer
+              id:
+                type: integer
+              guestId:
+                type: integer
+              nickname:
+                type: string
+              lives:
+                type: integer
+              score:
+                type: integer
+              toolsUsed:
+                type: integer
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        sender:
+          type: object
+          properties:
+            id:
+              type: integer
+            nickname:
+              type: string
+        content:
+          type: string
+        type:
+          type: string
+          enum: [message, reaction]
+        createdAt:
+          type: string
+          format: date-time

@@ -7,6 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: GuestRepository::class)]
 #[ORM\Table(name: 'guests')]
+#[ORM\HasLifecycleCallbacks]
 class Guest
 {
     #[ORM\Id]
@@ -26,6 +27,9 @@ class Guest
     #[ORM\ManyToOne(targetEntity: File::class)]
     #[ORM\JoinColumn(nullable: false)]
     private ?File $avatar = null;
+
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $weaknessProfile = null;
 
     #[ORM\PrePersist]
     public function onCreate(): void
@@ -81,6 +85,18 @@ class Guest
     public function setAvatar(File $avatar): static
     {
         $this->avatar = $avatar;
+
+        return $this;
+    }
+
+    public function getWeaknessProfile(): ?array
+    {
+        return $this->weaknessProfile;
+    }
+
+    public function setWeaknessProfile(?array $weaknessProfile): static
+    {
+        $this->weaknessProfile = $weaknessProfile;
 
         return $this;
     }
