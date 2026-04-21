@@ -27,4 +27,5 @@ script:post-response {
     throw new Error("Token não veio na resposta")
   }
   bru.setVar("token", resp.token)
+  bru.setEnvVar("token", resp.token)
 }

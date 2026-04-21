@@ -3,10 +3,14 @@ auth {
 }
 
 auth:bearer {
-  token: Bearer {{token}}
+  token: {{token}}
 }
 
 vars:pre-request {
   baseUrl: http://localhost:8080
   token: 
+  userId: 
+  guestId: 
+  sessionId: 
+  sessionGuestId: 
 }

@@ -1,0 +1,24 @@
+meta {
+  name: Answer current question
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/game-sessions/{{sessionId}}/answer
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "gameSessionGuestId": {{sessionGuestId}},
+    "answer": 24,
+    "timeMs": 2500
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

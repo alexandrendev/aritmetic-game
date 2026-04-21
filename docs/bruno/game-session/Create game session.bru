@@ -1,28 +1,29 @@
 meta {
-  name: Create new guest
+  name: Create game session
   type: http
   seq: 1
 }
 
 post {
-  url: {{baseUrl}}/guests
+  url: {{baseUrl}}/api/game-sessions
   body: json
   auth: inherit
 }
 
+headers {
+  Authorization: Bearer {{token}}
+}
+
 body:json {
-  {
-    "nickname": "nick34",
-    "avatarId": 2
-  }
+  {}
 }
 
 script:post-response {
   const resp = res.getBody()
   if (!resp.id) {
-    throw new Error("guestId não veio na resposta")
+    throw new Error("sessionId não veio na resposta")
   }
-  bru.setVar("guestId", resp.id)
+  bru.setVar("sessionId", resp.id)
 }
 
 settings {

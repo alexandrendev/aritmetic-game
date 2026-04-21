@@ -17,3 +17,11 @@ headers {
 auth:bearer {
   token: {{token}}
 }
+
+script:post-response {
+  const resp = res.getBody()
+  if (!resp.id) {
+    throw new Error("userId não veio na resposta")
+  }
+  bru.setVar("userId", resp.id)
+}

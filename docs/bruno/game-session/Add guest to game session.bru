@@ -1,0 +1,30 @@
+meta {
+  name: Add guest to game session
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/game-sessions/{{sessionId}}/guests
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "guestId": {{guestId}}
+  }
+}
+
+script:post-response {
+  const resp = res.getBody()
+  if (!resp.id) {
+    throw new Error("sessionGuestId não veio na resposta")
+  }
+  bru.setVar("sessionGuestId", resp.id)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -8,6 +8,11 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     app.public_url: 'http://localhost:8080'
+    pusher.enabled: '%env(bool:PUSHER_ENABLED)%'
+    pusher.app_id: '%env(string:PUSHER_APP_ID)%'
+    pusher.app_key: '%env(string:PUSHER_APP_KEY)%'
+    pusher.app_secret: '%env(string:PUSHER_APP_SECRET)%'
+    pusher.app_cluster: '%env(string:PUSHER_APP_CLUSTER)%'
 services:
     # default configuration for services in *this* file
     _defaults:
@@ -21,3 +26,10 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+    App\Service\PusherPublisher:
+        arguments:
+            $enabled: '%pusher.enabled%'
+            $appId: '%pusher.app_id%'
+            $appKey: '%pusher.app_key%'
+            $appSecret: '%pusher.app_secret%'
+            $appCluster: '%pusher.app_cluster%'

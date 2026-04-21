@@ -19,6 +19,8 @@ tags:
     description: Modo Batalha Inteligente (salas, rodadas, ferramentas)
   - name: Chat
     description: Chat da sala de batalha
+  - name: GameSessions
+    description: Sessões de jogo autenticadas (motor + participantes)
 
 paths:
   # ─── AUTH ────────────────────────────────────────────
@@ -491,6 +493,449 @@ paths:
         '404':
           description: Sala ou jogador não encontrado
 
+  # ─── GAME SESSIONS ─────────────────────────────────────
+  /api/game-sessions:
+    get:
+      tags: [GameSessions]
+      summary: Listar sessões do usuário autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de sessões
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameSession'
+        '401':
+          description: Não autenticado
+
+    post:
+      tags: [GameSessions]
+      summary: Criar sessão de jogo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [waiting, ready, playing, finished]
+                  default: waiting
+                difficulty:
+                  type: string
+                  enum: [easy, medium, hard]
+                  default: easy
+                state:
+                  type: object
+      responses:
+        '201':
+          description: Sessão criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSession'
+        '400':
+          description: Payload inválido
+        '401':
+          description: Não autenticado
+
+  /api/game-sessions/{id}:
+    get:
+      tags: [GameSessions]
+      summary: Buscar sessão por id
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      responses:
+        '200':
+          description: Sessão encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSession'
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão não encontrada
+
+    patch:
+      tags: [GameSessions]
+      summary: Atualizar sessão (status, dificuldade, state)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [waiting, ready, playing, finished]
+                difficulty:
+                  type: string
+                  enum: [easy, medium, hard]
+                state:
+                  type: object
+      responses:
+        '200':
+          description: Sessão atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSession'
+        '400':
+          description: Payload inválido
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão não encontrada
+
+    delete:
+      tags: [GameSessions]
+      summary: Remover sessão
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      responses:
+        '200':
+          description: Sessão removida
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão não encontrada
+
+  /api/game-sessions/{id}/start:
+    post:
+      tags: [GameSessions]
+      summary: Iniciar partida da sessão
+      description: |
+        Inicia o motor da sessão e gera a primeira pergunta.
+        Eventos realtime disparados:
+        - `game.session.started`
+        - `game.round.started`
+        - `game.question.generated`
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                target:
+                  type: integer
+                  minimum: 1
+                  maximum: 30
+                  description: Se não informado, o target é sorteado.
+                totalRounds:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                responseWindowMs:
+                  type: integer
+                  minimum: 3000
+                  maximum: 120000
+                  description: Janela de resposta da rodada em milissegundos.
+      responses:
+        '200':
+          description: Sessão iniciada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: started
+                  round:
+                    type: integer
+                  totalRounds:
+                    type: integer
+                  question:
+                    $ref: '#/components/schemas/GameQuestion'
+                  session:
+                    $ref: '#/components/schemas/GameSession'
+        '400':
+          description: Não foi possível iniciar
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão não encontrada
+
+  /api/game-sessions/{id}/answer:
+    post:
+      tags: [GameSessions]
+      summary: Responder pergunta da rodada atual
+      description: |
+        Processa a resposta do participante.
+        A rodada é fechada automaticamente por tempo no backend.
+        Resposta errada, fora da janela ou ausência de resposta no fechamento automático consomem 1 vida.
+        Eventos realtime possíveis:
+        - `game.answer.received`
+        - `game.participant.updated`
+        - `game.participant.eliminated`
+        - `game.round.finished`
+        - `game.session.finished`
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gameSessionGuestId, answer, timeMs]
+              properties:
+                gameSessionGuestId:
+                  type: integer
+                answer:
+                  type: integer
+                timeMs:
+                  type: integer
+                  minimum: 0
+      responses:
+        '200':
+          description: Resposta processada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  correct:
+                    type: boolean
+                  pointsEarned:
+                    type: integer
+                  timedOut:
+                    type: boolean
+                  livesRemaining:
+                    type: integer
+                  isAlive:
+                    type: boolean
+                  roundFinished:
+                    type: boolean
+        '400':
+          description: Requisição inválida
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão ou participante não encontrado
+
+  /api/game-sessions/{id}/next-round:
+    post:
+      tags: [GameSessions]
+      summary: [Deprecado] avanço manual de rodada
+      deprecated: true
+      description: |
+        A progressão de rodada é automática no backend.
+        Este endpoint retorna `410 Gone`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      responses:
+        '410':
+          description: Fluxo manual não suportado
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão não encontrada
+
+  /api/game-sessions/{id}/finish:
+    post:
+      tags: [GameSessions]
+      summary: Finalizar sessão manualmente
+      description: |
+        Encerra a sessão e publica `game.session.finished`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  example: manual
+      responses:
+        '200':
+          description: Sessão finalizada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: finished
+                  reason:
+                    type: string
+                  ranking:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão não encontrada
+
+  /api/game-sessions/{sessionId}/guests:
+    get:
+      tags: [GameSessions]
+      summary: Listar participantes da sessão
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionIdByName'
+      responses:
+        '200':
+          description: Lista de participantes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GameSessionGuest'
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão não encontrada
+
+    post:
+      tags: [GameSessions]
+      summary: Adicionar participante na sessão
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionIdByName'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [guestId]
+              properties:
+                guestId:
+                  type: integer
+                score:
+                  type: integer
+                  default: 0
+                lives:
+                  type: integer
+                  default: 3
+                isAlive:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: Participante adicionado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSessionGuest'
+        '400':
+          description: Payload inválido
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão ou guest não encontrado
+
+  /api/game-sessions/{sessionId}/guests/{id}:
+    get:
+      tags: [GameSessions]
+      summary: Buscar participante da sessão
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionIdByName'
+        - $ref: '#/components/parameters/GameSessionGuestId'
+      responses:
+        '200':
+          description: Participante encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSessionGuest'
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão ou participante não encontrado
+
+    patch:
+      tags: [GameSessions]
+      summary: Atualizar participante da sessão
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionIdByName'
+        - $ref: '#/components/parameters/GameSessionGuestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                guestId:
+                  type: integer
+                score:
+                  type: integer
+                lives:
+                  type: integer
+                isAlive:
+                  type: boolean
+      responses:
+        '200':
+          description: Participante atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSessionGuest'
+        '400':
+          description: Payload inválido
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão, participante ou guest não encontrado
+
+    delete:
+      tags: [GameSessions]
+      summary: Remover participante da sessão
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/GameSessionIdByName'
+        - $ref: '#/components/parameters/GameSessionGuestId'
+      responses:
+        '200':
+          description: Participante removido
+        '401':
+          description: Não autenticado
+        '404':
+          description: Sessão ou participante não encontrado
+
   # ─── CHAT ────────────────────────────────────────────
   /battle/rooms/{id}/chat:
     post:
@@ -563,6 +1008,30 @@ components:
         type: integer
       description: ID da sala de batalha
 
+    GameSessionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: ID da sessão de jogo
+
+    GameSessionIdByName:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: ID da sessão de jogo
+
+    GameSessionGuestId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      description: ID do participante da sessão
+
   schemas:
     User:
       type: object
@@ -573,6 +1042,66 @@ components:
           type: string
         email:
           type: string
+
+    GameQuestion:
+      type: object
+      properties:
+        id:
+          type: string
+        round:
+          type: integer
+        target:
+          type: integer
+        multiplier:
+          type: integer
+        operation:
+          type: string
+          example: "7x12"
+        correctAnswer:
+          type: integer
+        options:
+          type: array
+          items:
+            type: integer
+        timeoutMs:
+          type: integer
+
+    GameSession:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum: [waiting, ready, playing, finished]
+        difficulty:
+          type: string
+          enum: [easy, medium, hard]
+        userId:
+          type: integer
+        state:
+          type: object
+
+    GameSessionGuest:
+      type: object
+      properties:
+        id:
+          type: integer
+        gameSessionId:
+          type: integer
+        guest:
+          type: object
+          properties:
+            id:
+              type: integer
+            nickname:
+              type: string
+        score:
+          type: integer
+        lives:
+          type: integer
+        isAlive:
+          type: boolean
 
     BattleRoom:
       type: object

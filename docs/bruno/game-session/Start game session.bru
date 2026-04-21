@@ -1,0 +1,24 @@
+meta {
+  name: Start game session
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/game-sessions/{{sessionId}}/start
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "target": 12,
+    "totalRounds": 5,
+    "responseWindowMs": 10000
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
