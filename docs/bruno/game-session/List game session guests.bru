@@ -5,9 +5,13 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/game-sessions/{{sessionId}}/guests
+  url: {{baseUrl}}/api/game-sessions
   body: none
   auth: inherit
+}
+
+headers {
+  Accept: application/json
 }
 
 settings {
