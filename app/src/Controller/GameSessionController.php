@@ -113,6 +113,29 @@ class GameSessionController extends AbstractController
         return $this->json($this->serializeGameSession($session));
     }
 
+    #[Route('/code/{code}', name: 'get_by_code', methods: 'GET')]
+    public function getGameSessionByCode(string $code, #[CurrentUser] ?User $user): JsonResponse
+    {
+        if (!$user) {
+            return $this->json(
+                ['message' => 'Unauthorized.'],
+                Response::HTTP_UNAUTHORIZED
+            );
+        }
+        $session = $this->gameSessionRepository->findOneBy([
+           'code' =>$code
+        ]);
+
+        if (!$session) {
+            return $this->json(
+                ['message' => 'Game session not found.'],
+                Response::HTTP_NOT_FOUND
+            );
+        }
+
+        return $this->json($this->serializeGameSession($session));
+    }
+
     #[Route('/{id}', name: 'update', methods: ['PUT', 'PATCH'])]
     public function update(int $id, Request $request, #[CurrentUser] ?User $user): JsonResponse
     {

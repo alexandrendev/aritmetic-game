@@ -18,6 +18,6 @@ class GameSessionService
     {
         $bytes = random_bytes(self::ROOM_CODE_LENGTH);
 
-        return substr(bin2hex($bytes), 0, self::ROOM_CODE_LENGTH);
+        return strtoupper(substr(bin2hex($bytes), 0, self::ROOM_CODE_LENGTH));
     }
 }
