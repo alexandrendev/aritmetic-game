@@ -25,6 +25,12 @@ class GameSession
     #[ORM\Column(enumType: Difficulty::class)]
     private ?Difficulty $difficulty = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $name = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $code = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -74,6 +80,30 @@ class GameSession
     public function setDifficulty(Difficulty $difficulty): static
     {
         $this->difficulty = $difficulty;
+
+        return $this;
+    }
+
+    public function getName(): ?string
+    {
+        return $this->name;
+    }
+
+    public function setName(string $name): static
+    {
+        $this->name = $name;
+
+        return $this;
+    }
+
+    public function getCode(): ?string
+    {
+        return $this->code;
+    }
+
+    public function setCode(string $code): static
+    {
+        $this->code = $code;
 
         return $this;
     }

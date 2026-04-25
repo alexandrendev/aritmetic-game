@@ -10,6 +10,7 @@ use App\Event\GameSessionCreatedEvent;
 use App\Repository\GameSessionGuestRepository;
 use App\Repository\GameSessionRepository;
 use App\Service\GameSessionEngineService;
+use App\Service\GameSessionService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,6 +29,7 @@ class GameSessionController extends AbstractController
         private GameSessionEngineService $gameSessionEngineService,
         private EntityManagerInterface $entityManager,
         private EventDispatcherInterface $eventDispatcher,
+        private GameSessionService $gameSessionService,
     ) {
     }
 
@@ -61,16 +63,6 @@ class GameSessionController extends AbstractController
             return $this->json(['message' => 'Invalid JSON body.'], Response::HTTP_BAD_REQUEST);
         }
 
-        $status = array_key_exists('status', $payload) && is_string($payload['status'])
-            ? Status::tryFrom($payload['status'])
-            : Status::WAITING;
-        if (!$status) {
-            return $this->json([
-                'message' => 'Invalid status.',
-                'allowed' => array_map(fn(Status $item) => $item->value, Status::cases()),
-            ], Response::HTTP_BAD_REQUEST);
-        }
-
         $difficulty = array_key_exists('difficulty', $payload) && is_string($payload['difficulty'])
             ? Difficulty::tryFrom($payload['difficulty'])
             : Difficulty::EASY;
@@ -81,16 +73,19 @@ class GameSessionController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $state = $payload['state'] ?? null;
-        if (!is_array($state) && null !== $state) {
-            return $this->json(['message' => 'state must be an object/array or null.'], Response::HTTP_BAD_REQUEST);
-        }
+        $name = array_key_exists('name', $payload) && is_string($payload['name'])
+            ? $payload['name']
+            : $user->getUsername() . '\'s room';
+
+
+        $code = $this->gameSessionService->generateRoomsCode();
 
         $session = (new GameSession())
             ->setUserId((int) $user->getId())
-            ->setStatus($status)
-            ->setDifficulty($difficulty)
-            ->setState($state);
+            ->setName($name)
+            ->setCode($code)
+            ->setStatus(Status::WAITING)
+            ->setDifficulty($difficulty);
 
         $this->entityManager->persist($session);
         $this->entityManager->flush();
@@ -113,6 +108,29 @@ class GameSessionController extends AbstractController
 
         if (!$session) {
             return $this->json(['message' => 'Game session not found.'], Response::HTTP_NOT_FOUND);
+        }
+
+        return $this->json($this->serializeGameSession($session));
+    }
+
+    #[Route('/code/{code}', name: 'get_by_code', methods: 'GET')]
+    public function getGameSessionByCode(string $code, #[CurrentUser] ?User $user): JsonResponse
+    {
+        if (!$user) {
+            return $this->json(
+                ['message' => 'Unauthorized.'],
+                Response::HTTP_UNAUTHORIZED
+            );
+        }
+        $session = $this->gameSessionRepository->findOneBy([
+           'code' =>$code
+        ]);
+
+        if (!$session) {
+            return $this->json(
+                ['message' => 'Game session not found.'],
+                Response::HTTP_NOT_FOUND
+            );
         }
 
         return $this->json($this->serializeGameSession($session));
@@ -353,6 +371,8 @@ class GameSessionController extends AbstractController
     {
         return [
             'id' => $session->getId(),
+            'name' => $session->getName(),
+            'code' => $session->getCode(),
             'status' => $session->getStatus()?->value,
             'state' => $session->getState(),
             'userId' => $session->getUserId(),

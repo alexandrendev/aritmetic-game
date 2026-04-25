@@ -1,0 +1,20 @@
+meta {
+  name: Get Game Session By Code
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/game-sessions/code/:code
+  body: none
+  auth: inherit
+}
+
+params:path {
+  code: A0C79B1154
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
