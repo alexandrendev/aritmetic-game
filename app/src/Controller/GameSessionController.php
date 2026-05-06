@@ -114,17 +114,9 @@ class GameSessionController extends AbstractController
     }
 
     #[Route('/code/{code}', name: 'get_by_code', methods: 'GET')]
-    public function getGameSessionByCode(string $code, #[CurrentUser] ?User $user): JsonResponse
+    public function getGameSessionByCode(string $code): JsonResponse
     {
-        if (!$user) {
-            return $this->json(
-                ['message' => 'Unauthorized.'],
-                Response::HTTP_UNAUTHORIZED
-            );
-        }
-        $session = $this->gameSessionRepository->findOneBy([
-           'code' =>$code
-        ]);
+        $session = $this->gameSessionRepository->findOneBy(['code' => $code]);
 
         if (!$session) {
             return $this->json(
@@ -251,13 +243,9 @@ class GameSessionController extends AbstractController
     }
 
     #[Route('/{id}/answer', name: 'answer', methods: ['POST'])]
-    public function answer(int $id, Request $request, #[CurrentUser] ?User $user): JsonResponse
+    public function answer(int $id, Request $request): JsonResponse
     {
-        if (!$user) {
-            return $this->json(['message' => 'Unauthorized.'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $session = $this->getOwnedSession($id, $user);
+        $session = $this->gameSessionRepository->find($id);
         if (!$session) {
             return $this->json(['message' => 'Game session not found.'], Response::HTTP_NOT_FOUND);
         }

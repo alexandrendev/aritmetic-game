@@ -31,13 +31,9 @@ class GameSessionGuestController extends AbstractController
     }
 
     #[Route('', name: 'list', methods: ['GET'])]
-    public function list(int $sessionId, #[CurrentUser] ?User $user): JsonResponse
+    public function list(int $sessionId): JsonResponse
     {
-        if (!$user) {
-            return $this->json(['message' => 'Unauthorized.'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $session = $this->getOwnedSession($sessionId, $user);
+        $session = $this->gameSessionRepository->find($sessionId);
         if (!$session) {
             return $this->json(['message' => 'Game session not found.'], Response::HTTP_NOT_FOUND);
         }
@@ -51,13 +47,9 @@ class GameSessionGuestController extends AbstractController
     }
 
     #[Route('', name: 'create', methods: ['POST'])]
-    public function create(int $sessionId, Request $request, #[CurrentUser] ?User $user): JsonResponse
+    public function create(int $sessionId, Request $request): JsonResponse
     {
-        if (!$user) {
-            return $this->json(['message' => 'Unauthorized.'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $session = $this->getOwnedSession($sessionId, $user);
+        $session = $this->gameSessionRepository->find($sessionId);
         if (!$session) {
             return $this->json(['message' => 'Game session not found.'], Response::HTTP_NOT_FOUND);
         }
@@ -107,13 +99,9 @@ class GameSessionGuestController extends AbstractController
     }
 
     #[Route('/{id}', name: 'show', methods: ['GET'])]
-    public function show(int $sessionId, int $id, #[CurrentUser] ?User $user): JsonResponse
+    public function show(int $sessionId, int $id): JsonResponse
     {
-        if (!$user) {
-            return $this->json(['message' => 'Unauthorized.'], Response::HTTP_UNAUTHORIZED);
-        }
-
-        $session = $this->getOwnedSession($sessionId, $user);
+        $session = $this->gameSessionRepository->find($sessionId);
         if (!$session) {
             return $this->json(['message' => 'Game session not found.'], Response::HTTP_NOT_FOUND);
         }

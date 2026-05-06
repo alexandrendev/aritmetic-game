@@ -40,6 +40,9 @@ security:
         - { path: ^/api/register$, roles: PUBLIC_ACCESS }
         - { path: ^/api/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/token/refresh$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/game-sessions/code/, roles: PUBLIC_ACCESS }
+        - { path: ^/api/game-sessions/[0-9]+/guests, roles: PUBLIC_ACCESS }
+        - { path: ^/api/game-sessions/[0-9]+/answer$, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
 
 when@test:
