@@ -16,6 +16,16 @@ class GuestRepository extends ServiceEntityRepository
         parent::__construct($registry, Guest::class);
     }
 
+    public function isFileInUse(\App\Entity\File $file): bool
+    {
+        return $this->createQueryBuilder('g')
+            ->select('COUNT(g.id)')
+            ->where('g.avatar = :file')
+            ->setParameter('file', $file)
+            ->getQuery()
+            ->getSingleScalarResult() > 0;
+    }
+
     public function findWithAvatarById($id): ?Guest
     {
         return $this->createQueryBuilder('g')

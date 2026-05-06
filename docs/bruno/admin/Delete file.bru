@@ -1,0 +1,16 @@
+meta {
+  name: Delete file
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/admin/files/{{fileId}}
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

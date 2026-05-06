@@ -1,0 +1,16 @@
+meta {
+  name: Get file
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/admin/files/{{fileId}}
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
