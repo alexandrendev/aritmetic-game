@@ -2,7 +2,7 @@
 
 > Documento vivo. Atualizado semanalmente toda segunda-feira.  
 > Responsável pela coleta: Alexandre  
-> Início do projeto: 2026-03-22 | Última atualização: 2026-05-06
+> Início do projeto: 2026-03-22 | Última atualização: 2026-05-08
 
 ---
 
@@ -173,8 +173,8 @@ A taxa de regularidade captura o problema que uma simples contagem total de comm
 | Room code (get by code) | — | 2026-04-24 | ✅ |
 | Docker + worker | — | 2026-04-25 | ✅ |
 | Admin CRUD de avatars | — | 2026-05-06 | ✅ |
+| Setup de testes (Pest) + suíte inicial | — | 2026-05-08 | ✅ |
 | Frontend de jogo | — | — | 🔲 |
-| Testes automatizados | — | — | 🔲 |
 
 ### Indicadores atuais — 2026-05-06
 
@@ -237,7 +237,9 @@ Qualidade mensura a robustez e a confiabilidade do código entregue. Para um pro
 
 | Métrica | Definição |
 |---|---|
-| **Cobertura de testes** | Arquivos de teste / total de arquivos em src/ (%) |
+| **Arquivos de teste** | Quantidade de arquivos `*Test.php` em `app/tests/` |
+| **Asserts executados** | Total de asserts da suíte (saída final do Pest) |
+| **Taxa de sucesso** | Testes verdes ÷ total de testes (%) |
 | **Razão fix/feat** | Commits de `fix` ÷ commits de `feat` (quanto do esforço é corretivo) |
 | **Commits de hotfix em main** | Fixes diretos sem PR (indicam urgência e processo contornado) |
 | **Endpoints sem validação explícita** | Rotas que não validam o payload antes de persistir |
@@ -252,7 +254,10 @@ Cobertura de testes supera outras métricas de qualidade (como complexidade cicl
 
 ```bash
 # Arquivos de teste
-find app/tests -name "*.php" | wc -l
+find app/tests -name "*Test.php" | wc -l
+
+# Suíte completa (asserts e taxa de sucesso saem na linha final do Pest)
+docker compose run --rm php php vendor/bin/pest --testdox
 
 # Razão fix/feat
 feat=$(git log --oneline | grep -c "^.\{8\} feat")
@@ -263,17 +268,36 @@ echo "feat: $feat | fix: $fix | razão: $(echo "scale=2; $fix/$feat" | bc)"
 git log --no-merges --oneline main | grep "fix"
 ```
 
-### Indicadores atuais — 2026-05-06
+### Indicadores atuais — 2026-05-08
 
 | Indicador | Valor | Alerta |
 |---|---|---|
-| Arquivos de teste | **0** | 🔴 0% de cobertura |
+| Arquivos de teste | **4** | 🟡 Cobertura inicial — apenas 3 services e 1 entity |
+| Testes executados | 37 | — |
+| Asserts | 178 | — |
+| Taxa de sucesso | **100%** | 🟢 Suíte verde |
 | Commits `feat` | 10 | — |
 | Commits `fix` | 1 | — |
 | Razão fix/feat | **0,10** | 🟢 Baixa (fase inicial) |
 | Hotfixes diretos em main | 1 | 🟡 Monitorar |
 
-> **Análise:** A ausência total de testes automatizados é o principal risco de qualidade. O motor de jogo (`GameSessionEngineService`, 555 LOC) e o subscriber Pusher (212 LOC) são os componentes de maior complexidade e nenhum possui cobertura. A razão fix/feat de 0,10 é esperada para o estágio atual, mas tende a aumentar conforme o frontend iniciar o consumo real da API.
+#### O que está coberto
+
+| Alvo | LOC | Casos |
+|---|---|---|
+| `GameQuestionGeneratorService` | 79 | 16 (faixa de target, dificuldade, geração de questão e opções) |
+| `WeaknessAlgorithmService` | 156 | 7 (seleção, opções de resposta, dica, opções reduzidas) |
+| `ToolService` | 75 | 6 (uso de hint/eliminate/skip, jogador eliminado, ferramenta inexistente) |
+| `BattlePlayer` (entity) | 186 | 8 (vidas, status ghost, score, ferramentas) |
+
+#### O que falta cobrir (prioridade)
+
+1. `GameSessionEngineService` (555 LOC) — núcleo do jogo, sem cobertura.
+2. `BattleService` e `ChatService` — fluxo de partida e mensagens.
+3. `EventSubscriber` Pusher (212 LOC) — efeitos colaterais de publicação.
+4. Testes de integração HTTP (Symfony `WebTestCase`) para os 33 endpoints.
+
+> **Análise:** A primeira leva de testes cobre os componentes determinísticos (geradores, lógica de ferramentas, máquina de estados do jogador) e estabelece a infraestrutura Pest+Mockery. O motor de jogo e o subscriber Pusher seguem descobertos e continuam sendo o maior risco — a próxima iteração deve atacar `GameSessionEngineService`. A razão fix/feat de 0,10 é esperada para o estágio atual, mas tende a aumentar conforme o frontend iniciar o consumo real da API.
 
 ---
 
@@ -343,7 +367,8 @@ git log --format="%ad" --date=format:"%Y-%W" | sort | uniq -c
 git diff --shortstat HASH^..HASH
 
 # --- QUALIDADE ---
-find app/tests -name "*.php" | wc -l
+find app/tests -name "*Test.php" | wc -l
+docker compose run --rm php php vendor/bin/pest --testdox
 git log --oneline | grep -c "^.\{8\} feat"
 git log --oneline | grep -c "^.\{8\} fix"
 ```
