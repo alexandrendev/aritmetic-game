@@ -46,6 +46,15 @@ class PusherPublisher
         $this->publish(sprintf('private-user-%d', $userId), $eventName, $payload);
     }
 
+    public function authenticate(string $socketId, string $channelName): string
+    {
+        if (!$this->client) {
+            throw new \RuntimeException('Pusher is not enabled or not configured.');
+        }
+
+        return $this->client->socketAuth($channelName, $socketId);
+    }
+
     private function publish(string $channel, string $eventName, array $payload): void
     {
         if (!$this->client) {
