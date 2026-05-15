@@ -6,6 +6,7 @@ use App\Entity\GameSession;
 use App\Entity\GameSessionGuest;
 use App\Event\GameAnswerReceivedEvent;
 use App\Event\GameParticipantEliminatedEvent;
+use App\Event\GameParticipantKickedEvent;
 use App\Event\GameParticipantUpdatedEvent;
 use App\Event\GameQuestionGeneratedEvent;
 use App\Event\GameRoundFinishedEvent;
@@ -34,6 +35,7 @@ class GameSessionPusherSubscriber implements EventSubscriberInterface
             GameRoundFinishedEvent::class => 'onRoundFinished',
             GameRoundStartedEvent::class => 'onRoundStarted',
             GameParticipantEliminatedEvent::class => 'onParticipantEliminated',
+            GameParticipantKickedEvent::class => 'onParticipantKicked',
             GameSessionFinishedEvent::class => 'onSessionFinished',
         ];
     }
@@ -70,6 +72,10 @@ class GameSessionPusherSubscriber implements EventSubscriberInterface
             'totalRounds' => $event->getTotalRounds(),
             'target' => $event->getTarget(),
             'question' => $event->getQuestion(),
+            'participants' => array_map(
+                fn($p) => $this->serializeParticipant($p),
+                $event->getParticipants()
+            ),
         ];
 
         $this->publisher->publishToSession($session->getId(), 'game.session.started', $payload);
@@ -160,6 +166,19 @@ class GameSessionPusherSubscriber implements EventSubscriberInterface
         }
 
         $this->publisher->publishToSession($session->getId(), 'game.participant.eliminated', [
+            'sessionId' => $session->getId(),
+            'participant' => $this->serializeParticipant($event->getParticipant()),
+        ]);
+    }
+
+    public function onParticipantKicked(GameParticipantKickedEvent $event): void
+    {
+        $session = $event->getSession();
+        if (null === $session->getId()) {
+            return;
+        }
+
+        $this->publisher->publishToSession($session->getId(), 'game.participant.kicked', [
             'sessionId' => $session->getId(),
             'participant' => $this->serializeParticipant($event->getParticipant()),
         ]);

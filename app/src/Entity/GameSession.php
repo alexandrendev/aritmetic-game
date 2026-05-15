@@ -6,6 +6,7 @@ use App\Repository\GameSessionRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: GameSessionRepository::class)]
+#[ORM\HasLifecycleCallbacks]
 class GameSession
 {
     #[ORM\Id]
@@ -30,6 +31,15 @@ class GameSession
 
     #[ORM\Column(length: 10, nullable: true)]
     private ?string $code = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $createdAt = null;
+
+    #[ORM\PrePersist]
+    public function onCreate(): void
+    {
+        $this->createdAt = new \DateTimeImmutable();
+    }
 
     public function getId(): ?int
     {
@@ -106,5 +116,10 @@ class GameSession
         $this->code = $code;
 
         return $this;
+    }
+
+    public function getCreatedAt(): ?\DateTimeImmutable
+    {
+        return $this->createdAt;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\GameSession;
 use App\Entity\GameSessionGuest;
 use App\Entity\User;
+use App\Event\GameParticipantKickedEvent;
 use App\Event\GameParticipantUpdatedEvent;
 use App\Repository\GameSessionGuestRepository;
 use App\Repository\GameSessionRepository;
@@ -209,6 +210,7 @@ class GameSessionGuestController extends AbstractController
             return $this->json(['message' => 'Game session guest not found.'], Response::HTTP_NOT_FOUND);
         }
 
+        $this->eventDispatcher->dispatch(new GameParticipantKickedEvent($session, $item));
         $this->entityManager->remove($item);
         $this->entityManager->flush();
 

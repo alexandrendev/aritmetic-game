@@ -81,7 +81,8 @@ class GameSessionEngineService
             $question,
             1,
             $resolvedTotalRounds,
-            $resolvedTarget
+            $resolvedTarget,
+            $participants
         ));
         $this->eventDispatcher->dispatch(new GameRoundStartedEvent($session, 1, $question));
         $this->eventDispatcher->dispatch(new GameQuestionGeneratedEvent($session, $question));
@@ -412,8 +413,15 @@ class GameSessionEngineService
 
     private function shouldFinishSession(GameSession $session, array $aliveParticipants): bool
     {
-        if (count($aliveParticipants) <= 1) {
+        if (count($aliveParticipants) === 0) {
             return true;
+        }
+
+        if (count($aliveParticipants) === 1) {
+            $totalParticipants = count($this->gameSessionGuestRepository->findBySession($session));
+            if ($totalParticipants > 1) {
+                return true;
+            }
         }
 
         return $this->getCurrentRound($session) >= $this->getTotalRounds($session);
