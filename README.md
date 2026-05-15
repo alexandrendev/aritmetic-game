@@ -121,7 +121,7 @@ O participante tem 3 vidas e perde uma quando erra, responde fora da janela ou n
 - **Auth**: registro, login JSON, `/me`, refresh token rotativo.
 - **Guests**: cadastro de jogador com nickname e avatar; perfil de fraqueza (`weaknessProfile`) usado pelo algoritmo de seleção de questões.
 - **Avatares**: catálogo público (`/files/avatars`) + CRUD admin (`/api/admin/files`) com upload.
-- **Game Session (single owner)**: criar/listar/atualizar/excluir, buscar por código curto, iniciar, responder, avançar rodada, finalizar.
+- **Game Session (single owner)**: criar/listar/atualizar/excluir, buscar por código curto, iniciar, responder, avançar rodada, finalizar. Criação bloqueada com 409 se já existir sessão ativa do mesmo usuário. Listagem enriquecida com `participantsCount`, `participants` e `createdAt`.
 - **Battle Room (multiplayer)**: criar sala com código, entrar, marcar `ready`, iniciar partida, responder, avançar rodada, usar ferramenta, chat por sala.
 - **Algoritmo de questões**: 70% das perguntas vêm de operações em que os jogadores erram mais (peso por taxa de erro × tempo médio); 30% aleatórias para variedade.
 - **Realtime**: eventos publicados em canais Pusher por sessão, por usuário e por sala — frontend reidrata por `GET` em caso de reconexão.
@@ -206,7 +206,7 @@ Prefixo: a maioria sob `/api`. Tudo exige `Authorization: Bearer <jwt>`, exceto 
 
 **Eventos publicados**
 
-`game.session.created` · `game.session.started` · `game.question.generated` · `game.answer.received` · `game.participant.updated` · `game.round.started` · `game.round.finished` · `game.participant.eliminated` · `game.session.finished` · `battle.room.*` · `chat.message.sent`
+`game.session.created` · `game.session.started` · `game.question.generated` · `game.answer.received` · `game.participant.updated` · `game.round.started` · `game.round.finished` · `game.participant.eliminated` · `game.participant.kicked` · `game.session.finished` · `battle.room.*` · `chat.message.sent`
 
 Payload base contém `schemaVersion`, `occurredAt`, `sessionId` (ou `roomId`) + dados específicos.
 

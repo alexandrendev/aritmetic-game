@@ -223,6 +223,7 @@ Eventos publicados:
 - `game.round.finished`
 - `game.round.started`
 - `game.participant.eliminated`
+- `game.participant.kicked`
 - `game.session.finished`
 
 ---

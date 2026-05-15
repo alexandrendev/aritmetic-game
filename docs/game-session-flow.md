@@ -104,6 +104,7 @@ Eventos:
 - `game.round.finished`
 - `game.round.started`
 - `game.participant.eliminated`
+- `game.participant.kicked` — disparado quando o host remove um participante via `DELETE /api/game-sessions/{sessionId}/guests/{id}`; o participante é excluído do banco antes da rodada seguinte. Payload igual ao de `eliminated`, mas indica remoção manual.
 - `game.session.finished`
 
 Payload base inclui:
@@ -133,9 +134,14 @@ Payload base inclui:
 
 - `game.question.generated` / `game.round.started` → renderizar pergunta/rodada.
 - `game.answer.received` / `game.participant.updated` → atualizar placar, vidas, status.
-- `game.participant.eliminated` → refletir eliminação.
+- `game.participant.eliminated` → marcar participante como eliminado (`isAlive: false`), manter na lista.
+- `game.participant.kicked` → **remover** participante da lista. Se o ID kickado coincidir com o `guest-session-id` do próprio cliente, mostrar tela de expulsão e redirecionar.
 - `game.round.finished` → mostrar resumo da rodada.
 - `game.session.finished` → mostrar ranking final e travar ações de jogo.
+
+### Nota: criação de sessão com sessão ativa
+
+`POST /api/game-sessions` retorna **409 Conflict** se o usuário autenticado já possuir uma sessão com status `waiting` ou `playing`. O corpo da resposta inclui `activeSession` com os dados da sessão em andamento para que o frontend redirecione diretamente ao lobby.
 
 ### Regra de vidas/erro
 

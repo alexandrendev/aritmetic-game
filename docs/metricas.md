@@ -2,7 +2,7 @@
 
 > Documento vivo. Atualizado semanalmente toda segunda-feira.  
 > Responsável pela coleta: Alexandre  
-> Início do projeto: 2026-03-22 | Última atualização: 2026-05-08
+> Início do projeto: 2026-03-22 | Última atualização: 2026-05-15
 
 ---
 
@@ -61,26 +61,28 @@ ls app/migrations/*.php | wc -l
 
 Frequência: semanal (toda segunda-feira).
 
-### Snapshot atual — 2026-05-06
+### Snapshot atual — 2026-05-15
 
 | Camada | Arquivos | LOC |
 |---|---|---|
-| Controllers | 8 | 1.427 |
-| Entities | 12 | 1.104 |
-| Services | 9 | 1.395 |
-| Events | 20 | 476 |
-| Repositories | 9 | 307 |
-| EventSubscriber | 1 | 212 |
+| Controllers | 9 | 1.537 |
+| Entities | 12 | 1.119 |
+| Services | 9 | 1.412 |
+| Events | 21 | 503 |
+| Repositories | 9 | 298 |
+| EventSubscriber | 1 | 231 |
 | Message/Handler | 2 | 60 |
-| **Total** | **63** | **5.056** |
+| **Total** | **65** | **5.235** |
 
 | Indicador | Valor |
 |---|---|
-| Endpoints | 33 |
-| Migrações | 10 |
-| Eventos Pusher | 20 |
+| Endpoints | 34 |
+| Migrações | 11 |
+| Eventos Pusher | 21 |
 
-> **Análise:** A densidade de 153 LOC/endpoint é indicador de controllers bem-dimensionados para Symfony (faixa típica: 100–200 LOC com validação, serialização e tratamento de erros). O volume de Controllers (1.427 LOC, 28% do total) supera levemente Services (1.395 LOC), sugerindo que parte da lógica de orquestração ainda reside nos controllers — candidata a extração gradual conforme as services crescerem. A proporção de 1 evento Pusher para cada 1,65 endpoints indica cobertura de notificação em tempo real razoável para o estágio atual do produto.
+> **Principais adições desde 2026-05-06:** `GameParticipantKickedEvent` (novo evento de expulsão de participante); campo `createdAt` em `GameSession` com migration correspondente; lógica de bloqueio de sessões duplicadas em `GameSessionController::create()`; enriquecimento da serialização de sessão com `participantsCount`, `participants` e `createdAt`; método `findActiveByUserId()` em `GameSessionRepository`; handler `onParticipantKicked()` em `GameSessionPusherSubscriber`.
+>
+> **Análise:** A densidade de 154 LOC/endpoint permanece estável (vs. 153 anterior), confirmando que os novos endpoints e comportamentos seguem o mesmo padrão de complexidade. O crescimento de +179 LOC com +1 endpoint e +1 evento reflete adição de funcionalidade transversal (gerenciamento de sala + expulsão) que distribui código entre camadas existentes ao invés de criar controllers novos. O EventSubscriber cresceu +19 LOC (+9%) por um único handler novo — evidência de que a arquitetura de eventos está bem compartimentada.
 
 ---
 
@@ -142,9 +144,10 @@ done
 | 2026-W15 | 19–25 abr | — |
 | 2026-W16 | 26 abr – 2 mai | 10 |
 | 2026-W17 | 3–9 mai | — |
-| 2026-W18 | 10–16 mai | 2 |
+| 2026-W18 | 10–16 mai | 6 |
+| 2026-W19 | 17–23 mai | 3 + em andamento |
 
-> **Observação:** W15 e W17 com zero commits. Pico na W16 com 10 commits concentrados em dois dias (24–25/04).
+> **Observação:** W15 e W17 com zero commits. Pico na W16 com 10 commits concentrados em dois dias (24–25/04). W18 voltou a 6 commits incluindo feat(pusher), feat(cors) e setup de testes; W19 em andamento com feat de gerenciamento de salas e expulsão de participantes (branch `feat/file-crud`).
 
 > **Análise:** O PR #24 (+2.764 LOC) concentrou 73% do volume total entregue em um único merge — padrão esperado em fase de bootstrap de domínio complexo (engine + Pusher + battle/chat precisam coexistir antes de qualquer entrega incremental). Os 3 PRs merged em menos de 30 minutos no dia 24/04 revelam um padrão de entrega em lote: desenvolvimento acumulado localmente e submetido em sequência rápida, eficiente para time solo mas que dificultaria revisão contextual em time. A ausência de PRs nas semanas W15 e W17 é coerente com a irregularidade identificada na dimensão de Prazo.
 
@@ -182,16 +185,19 @@ A taxa de regularidade captura o problema que uma simples contagem total de comm
 | Docker + worker | — | 2026-04-25 | ✅ |
 | Admin CRUD de avatars | — | 2026-05-06 | ✅ |
 | Setup de testes (Pest) + suíte inicial | — | 2026-05-08 | ✅ |
-| Frontend de jogo | — | — | 🔲 |
+| Pusher auth dual-path (host + guest) | — | 2026-05-13 | ✅ |
+| Gerenciamento de salas: bloqueio de duplicatas, listagem enriquecida, `createdAt` | — | 2026-05-15 | ✅ |
+| Expulsão de participantes (`game.participant.kicked`) | — | 2026-05-15 | ✅ |
+| Frontend de jogo (completo) | — | — | 🔲 |
 
-### Indicadores atuais — 2026-05-06
+### Indicadores atuais — 2026-05-15
 
 | Indicador | Valor |
 |---|---|
-| Duração total do projeto | 45 dias (2026-03-22 → hoje) |
-| Semanas totais | 7 |
-| Semanas ativas (≥1 commit) | 5 |
-| Taxa de regularidade | **71%** |
+| Duração total do projeto | 54 dias (2026-03-22 → hoje) |
+| Semanas totais | 9 |
+| Semanas ativas (≥1 commit) | 7 |
+| Taxa de regularidade | **78%** |
 | Tempo médio entre PRs | ~7 dias |
 | Maior gap sem PR | 16 dias (06/04 → 24/04) |
 
@@ -220,16 +226,16 @@ Produtividade relaciona o volume entregue com o tempo e esforço gastos. Permite
 
 LOC/semana isolado pode ser inflado por código repetitivo; combinado com endpoints/semana e PRs/semana forma uma visão triangulada: muito LOC com poucos endpoints e poucos PRs sugere código de suporte (infra, config) ou refatoração sem entrega funcional. A razão LOC/endpoint é um proxy de complexidade média por funcionalidade.
 
-### Indicadores atuais — 2026-05-06
+### Indicadores atuais — 2026-05-15
 
 | Indicador | Valor |
 |---|---|
-| LOC total em src/ | 5.056 |
+| LOC total em src/ | 5.235 |
 | LOC médio por PR (feature) | ~487 LOC líquido |
-| Endpoints entregues total | 33 |
-| LOC por endpoint | **153 LOC/endpoint** |
-| PRs por semana ativa | **1,6 PR/semana** |
-| LOC líquido por semana ativa | **~798 LOC/semana** |
+| Endpoints entregues total | 34 |
+| LOC por endpoint | **154 LOC/endpoint** |
+| PRs por semana ativa | **1,4 PR/semana** |
+| LOC líquido por semana ativa | **~748 LOC/semana** |
 
 > **Nota:** O PR #24 (+2.764 LOC) distorce a média. Excluindo-o, a média cai para ~162 LOC/PR, mais representativa de uma entrega incremental saudável.
 
@@ -280,7 +286,7 @@ echo "feat: $feat | fix: $fix | razão: $(echo "scale=2; $fix/$feat" | bc)"
 git log --no-merges --oneline main | grep "fix"
 ```
 
-### Indicadores atuais — 2026-05-08
+### Indicadores atuais — 2026-05-15
 
 | Indicador | Valor | Alerta |
 |---|---|---|
@@ -288,9 +294,9 @@ git log --no-merges --oneline main | grep "fix"
 | Testes executados | 37 | — |
 | Asserts | 178 | — |
 | Taxa de sucesso | **100%** | 🟢 Suíte verde |
-| Commits `feat` | 10 | — |
+| Commits `feat` | ~12 | — |
 | Commits `fix` | 1 | — |
-| Razão fix/feat | **0,10** | 🟢 Baixa (fase inicial) |
+| Razão fix/feat | **~0,08** | 🟢 Baixa (fase inicial) |
 | Hotfixes diretos em main | 1 | 🟡 Monitorar |
 
 #### O que está coberto
@@ -306,8 +312,9 @@ git log --no-merges --oneline main | grep "fix"
 
 1. `GameSessionEngineService` (555 LOC) — núcleo do jogo, sem cobertura.
 2. `BattleService` e `ChatService` — fluxo de partida e mensagens.
-3. `EventSubscriber` Pusher (212 LOC) — efeitos colaterais de publicação.
-4. Testes de integração HTTP (Symfony `WebTestCase`) para os 33 endpoints.
+3. `EventSubscriber` Pusher (231 LOC) — efeitos colaterais de publicação, incluindo novo `onParticipantKicked`.
+4. Testes de integração HTTP (Symfony `WebTestCase`) para os 34 endpoints.
+5. `GameSessionController::create()` — lógica de bloqueio de sessões duplicadas (409) não coberta.
 
 > **Análise:** A primeira leva de testes cobre os componentes determinísticos (geradores, lógica de ferramentas, máquina de estados do jogador) e estabelece a infraestrutura Pest+Mockery. O motor de jogo e o subscriber Pusher seguem descobertos e continuam sendo o maior risco — a próxima iteração deve atacar `GameSessionEngineService`. A razão fix/feat de 0,10 é esperada para o estágio atual, mas tende a aumentar conforme o frontend iniciar o consumo real da API.
 
@@ -369,7 +376,7 @@ echo "Conformes: $ok / $total ($(echo "scale=0; $ok * 100 / $total" | bc)%)"
 git branch -r | grep -v HEAD
 ```
 
-### Indicadores atuais — 2026-05-13
+### Indicadores atuais — 2026-05-15
 
 #### Cycle time por PR
 
@@ -384,6 +391,7 @@ git branch -r | grep -v HEAD
 | #26 | 2026-04-24 21:41 | 2026-04-24 21:41 | < 1 min |
 | #27 | 2026-04-25 13:57 | 2026-04-25 14:56 | ~59 min |
 | #28 | 2026-05-08 09:16 | 2026-05-08 09:20 | ~4 min |
+| feat/file-crud | 2026-05-15 | — | em andamento |
 
 | Indicador | Valor |
 |---|---|
@@ -410,9 +418,9 @@ git branch -r | grep -v HEAD
 
 | Indicador | Valor | Alerta |
 |---|---|---|
-| Total de commits (sem merges) | 20 | — |
-| Commits conformes (Conventional) | 13 | — |
-| Taxa de conformidade | **65%** | 🟡 Abaixo de 80% |
+| Total de commits (sem merges) | 23 | — |
+| Commits conformes (Conventional) | 16 | — |
+| Taxa de conformidade | **70%** | 🟡 Abaixo de 80% |
 | Branches com prefixo `feat-` | 3 | — |
 | Branches com nº de issue | 2 | — |
 | Branches sem convenção | 1 (`developer`) | 🟡 Monitorar |
