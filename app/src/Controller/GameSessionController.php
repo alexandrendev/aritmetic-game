@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Difficulty;
 use App\Entity\GameSession;
+use App\Entity\GameSessionGuest;
 use App\Entity\Status;
 use App\Entity\User;
 use App\Event\GameSessionCreatedEvent;
@@ -77,6 +78,14 @@ class GameSessionController extends AbstractController
             ? $payload['name']
             : $user->getUsername() . '\'s room';
 
+
+        $activeSessions = $this->gameSessionRepository->findActiveByUserId((int) $user->getId());
+        if (count($activeSessions) > 0) {
+            return $this->json([
+                'message' => 'You already have an active game session.',
+                'activeSession' => $this->serializeGameSession($activeSessions[0]),
+            ], Response::HTTP_CONFLICT);
+        }
 
         $code = $this->gameSessionService->generateRoomsCode();
 
@@ -357,14 +366,34 @@ class GameSessionController extends AbstractController
 
     private function serializeGameSession(GameSession $session): array
     {
+        $participants = $this->gameSessionGuestRepository->findBySession($session);
+
+        $state = $session->getState();
+        $safeState = null;
+        if (is_array($state)) {
+            $safeState = array_filter(
+                $state,
+                fn(string $k) => in_array($k, ['round', 'totalRounds', 'startedAt', 'finishedAt', 'finishReason', 'ranking'], true),
+                ARRAY_FILTER_USE_KEY
+            );
+        }
+
         return [
             'id' => $session->getId(),
             'name' => $session->getName(),
             'code' => $session->getCode(),
             'status' => $session->getStatus()?->value,
-            'state' => $session->getState(),
-            'userId' => $session->getUserId(),
             'difficulty' => $session->getDifficulty()?->value,
+            'createdAt' => $session->getCreatedAt()?->format(DATE_ATOM),
+            'participantsCount' => count($participants),
+            'participants' => array_map(fn(GameSessionGuest $p) => [
+                'id' => $p->getId(),
+                'nickname' => $p->getGuest()?->getNickName(),
+                'score' => $p->getScore(),
+                'lives' => $p->getLives(),
+                'isAlive' => $p->isAlive(),
+            ], $participants),
+            'state' => $safeState,
         ];
     }
 

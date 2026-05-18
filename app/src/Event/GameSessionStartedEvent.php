@@ -9,7 +9,8 @@ class GameSessionStartedEvent extends GameSessionEvent
         private array $question,
         private int $round,
         private int $totalRounds,
-        private int $target
+        private int $target,
+        private array $participants = []
     ) {
         parent::__construct($session);
     }
@@ -32,5 +33,10 @@ class GameSessionStartedEvent extends GameSessionEvent
     public function getTarget(): int
     {
         return $this->target;
+    }
+
+    public function getParticipants(): array
+    {
+        return $this->participants;
     }
 }

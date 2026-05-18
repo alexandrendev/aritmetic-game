@@ -12,7 +12,7 @@ O backend usa REST para comandos e **Pusher** para eventos em tempo real. O fron
 
 | Papel | Autenticação | O que faz |
 |-------|-------------|-----------|
-| **Host** | JWT (Bearer) | Cria a sala, adiciona participantes, inicia e encerra a sessão |
+| **Host** | JWT (Bearer) | Cria a sala, adiciona e expulsa participantes, inicia e encerra a sessão |
 | **Guest** | Sem autenticação | Cria seu perfil, busca a sala pelo código, entra, responde perguntas |
 
 ---
@@ -31,18 +31,30 @@ Authorization: Bearer {token}
 }
 ```
 
-Resposta:
+Resposta (201 Created):
 ```json
 {
   "id": 42,
   "name": "Sala do joãozinho",
   "code": "A0C79B1154",
   "status": "waiting",
-  "state": null,
-  "userId": 7,
-  "difficulty": "easy"
+  "difficulty": "easy",
+  "createdAt": "2026-05-15T12:00:00+00:00",
+  "participantsCount": 0,
+  "participants": [],
+  "state": null
 }
 ```
+
+**409 Conflict** — se o usuário já tiver uma sessão com status `waiting` ou `playing`:
+```json
+{
+  "message": "You already have an active game session.",
+  "activeSession": { /* objeto da sessão ativa, mesmo formato acima */ }
+}
+```
+
+O frontend deve redirecionar ao lobby da `activeSession` ao receber 409.
 
 Eventos Pusher disparados: `game.session.created` em `private-game-session-42` e `private-user-7`.
 
@@ -195,7 +207,23 @@ php bin/console messenger:consume async -vv
 
 ---
 
-### 8. Encerramento manual (opcional)
+### 8. Host expulsa um participante (opcional)
+
+```
+DELETE /api/game-sessions/{sessionId}/guests/{id}
+Authorization: Bearer {token}
+```
+
+- `{id}` é o `sessionGuestId` (o `id` retornado ao adicionar o participante, não o `guestId`).
+- Funciona em qualquer status de sessão (`waiting` ou `playing`).
+- O participante é **removido do banco** antes do evento ser publicado.
+- Resposta: `{ "message": "Game session guest deleted." }`
+
+Evento Pusher disparado: `game.participant.kicked`
+
+---
+
+### 9. Encerramento manual (opcional)
 
 ```
 POST /api/game-sessions/{id}/finish
@@ -286,7 +314,7 @@ Onde `timeBonus = (responseWindowMs - timeMs) / responseWindowMs` (clampeado ent
 | `POST` | `/api/game-sessions/{id}/start` | Iniciar jogo |
 | `POST` | `/api/game-sessions/{id}/finish` | Encerrar jogo manualmente |
 | `PATCH` | `/api/game-sessions/{sessionId}/guests/{id}` | Atualizar participante |
-| `DELETE` | `/api/game-sessions/{sessionId}/guests/{id}` | Remover participante |
+| `DELETE` | `/api/game-sessions/{sessionId}/guests/{id}` | Expulsar participante (dispara `game.participant.kicked`) |
 
 ---
 
@@ -433,6 +461,30 @@ Canal: sessão
   }
 }
 ```
+
+---
+
+### `game.participant.kicked`
+
+Canal: sessão
+
+```json
+{
+  "sessionId": 42,
+  "participant": {
+    "id": 88,
+    "guestId": 15,
+    "nickname": "pedroca",
+    "score": 45,
+    "lives": 2,
+    "isAlive": true
+  }
+}
+```
+
+Disparado pelo host ao remover um participante via `DELETE /api/game-sessions/{sessionId}/guests/{id}`. Diferente de `eliminated` (participante permanece na lista com `isAlive: false`), aqui o participante **deve ser removido da lista** no frontend.
+
+O cliente que foi kickado pode detectar isso comparando `participant.id` com o `guest-session-id` armazenado localmente.
 
 ---
 
