@@ -44,7 +44,7 @@ class GuestController extends AbstractController
 
         return $this->json([
             'id' => $newGuest->getId(),
-            'nickname' => $newGuest->getNickname(),
+            'nickname' => $newGuest->getNickName(),
             'avatar' => [
                 'id' => $newGuest->getAvatar()->getId(),
                 'url' => $baseUrl . '/' .$newGuest->getAvatar()->getPath(),
