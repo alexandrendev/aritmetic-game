@@ -33,3 +33,16 @@ services:
             $appKey: '%pusher.app_key%'
             $appSecret: '%pusher.app_secret%'
             $appCluster: '%pusher.app_cluster%'
+
+    App\Command\SeedAvatarsCommand:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
+    App\Service\StorageService:
+        arguments:
+            $endpoint: '%env(MINIO_ENDPOINT)%'
+            $region: '%env(MINIO_REGION)%'
+            $key: '%env(MINIO_ACCESS_KEY)%'
+            $secret: '%env(MINIO_SECRET_KEY)%'
+            $bucket: '%env(MINIO_BUCKET)%'
+            $publicUrl: '%env(MINIO_PUBLIC_URL)%'

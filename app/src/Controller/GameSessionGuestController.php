@@ -4,12 +4,14 @@ namespace App\Controller;
 
 use App\Entity\GameSession;
 use App\Entity\GameSessionGuest;
+use App\Entity\Status;
 use App\Entity\User;
 use App\Event\GameParticipantKickedEvent;
 use App\Event\GameParticipantUpdatedEvent;
 use App\Repository\GameSessionGuestRepository;
 use App\Repository\GameSessionRepository;
 use App\Repository\GuestRepository;
+use App\Service\GameSessionEngineService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -28,6 +30,7 @@ class GameSessionGuestController extends AbstractController
         private GuestRepository $guestRepository,
         private EntityManagerInterface $entityManager,
         private EventDispatcherInterface $eventDispatcher,
+        private GameSessionEngineService $engineService,
     ) {
     }
 
@@ -96,7 +99,12 @@ class GameSessionGuestController extends AbstractController
         $this->entityManager->flush();
         $this->eventDispatcher->dispatch(new GameParticipantUpdatedEvent($session, $item));
 
-        return $this->json($this->serializeGameSessionGuest($item), Response::HTTP_CREATED);
+        $allParticipants = $this->gameSessionGuestRepository->findBy(['gameSession' => $session], ['id' => 'ASC']);
+
+        return $this->json([
+            'participant' => $this->serializeGameSessionGuest($item),
+            'participants' => array_map(fn(GameSessionGuest $p) => $this->serializeGameSessionGuest($p), $allParticipants),
+        ], Response::HTTP_CREATED);
     }
 
     #[Route('/{id}', name: 'show', methods: ['GET'])]
@@ -189,6 +197,36 @@ class GameSessionGuestController extends AbstractController
         return $this->json($this->serializeGameSessionGuest($item));
     }
 
+    #[Route('/{id}/kick', name: 'kick', methods: ['POST'])]
+    public function kick(int $sessionId, int $id, #[CurrentUser] ?User $user): JsonResponse
+    {
+        if (!$user) {
+            return $this->json(['message' => 'Unauthorized.'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $session = $this->getOwnedSession($sessionId, $user);
+        if (!$session) {
+            return $this->json(['message' => 'Game session not found.'], Response::HTTP_NOT_FOUND);
+        }
+
+        $item = $this->gameSessionGuestRepository->findOneBy([
+            'id' => $id,
+            'gameSession' => $session,
+        ]);
+
+        if (!$item) {
+            return $this->json(['message' => 'Game session guest not found.'], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $result = $this->engineService->kickParticipant($session, $item);
+        } catch (\RuntimeException $e) {
+            return $this->json(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->json($result);
+    }
+
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(int $sessionId, int $id, #[CurrentUser] ?User $user): JsonResponse
     {
@@ -208,6 +246,13 @@ class GameSessionGuestController extends AbstractController
 
         if (!$item) {
             return $this->json(['message' => 'Game session guest not found.'], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($session->getStatus() === Status::PLAYING) {
+            return $this->json(
+                ['message' => 'Cannot remove a participant during an active game. Use POST /{id}/kick instead.'],
+                Response::HTTP_CONFLICT
+            );
         }
 
         $this->eventDispatcher->dispatch(new GameParticipantKickedEvent($session, $item));

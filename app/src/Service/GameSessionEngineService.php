@@ -7,6 +7,7 @@ use App\Entity\GameSessionGuest;
 use App\Entity\Status;
 use App\Event\GameAnswerReceivedEvent;
 use App\Event\GameParticipantEliminatedEvent;
+use App\Event\GameParticipantKickedEvent;
 use App\Event\GameParticipantUpdatedEvent;
 use App\Event\GameQuestionGeneratedEvent;
 use App\Event\GameRoundFinishedEvent;
@@ -219,6 +220,47 @@ class GameSessionEngineService
         }
 
         return $this->closeCurrentRoundAndTransition($session, 'timeout');
+    }
+
+    public function kickParticipant(GameSession $session, GameSessionGuest $participant): array
+    {
+        if ($session->getStatus() !== Status::PLAYING) {
+            throw new \RuntimeException('Can only kick a participant during an active game session.');
+        }
+
+        $participant->setLives(0);
+        $participant->setIsAlive(false);
+        $this->entityManager->flush();
+
+        $this->eventDispatcher->dispatch(new GameParticipantKickedEvent($session, $participant));
+
+        $state = $this->getSessionState($session);
+        if (isset($state['roundClosedAt'])) {
+            return ['status' => 'kicked'];
+        }
+
+        $aliveParticipants = $this->gameSessionGuestRepository->findAliveBySession($session);
+        $answers = is_array($state['answers'] ?? null) ? $state['answers'] : [];
+
+        if (count($aliveParticipants) === 0 || $this->haveAllAliveAnswered($aliveParticipants, $answers)) {
+            return $this->closeCurrentRoundAndTransition($session, 'all_answered');
+        }
+
+        return ['status' => 'kicked'];
+    }
+
+    public function forceAdvanceRound(GameSession $session): array
+    {
+        if ($session->getStatus() !== Status::PLAYING) {
+            throw new \RuntimeException('Game session is not in progress.');
+        }
+
+        $state = $this->getSessionState($session);
+        if (isset($state['roundClosedAt'])) {
+            throw new \RuntimeException('Round is already closed.');
+        }
+
+        return $this->closeCurrentRoundAndTransition($session, 'host_skip');
     }
 
     public function finishSession(GameSession $session, string $reason = 'manual'): array

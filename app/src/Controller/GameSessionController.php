@@ -305,9 +305,18 @@ class GameSessionController extends AbstractController
             return $this->json(['message' => 'Unauthorized.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        return $this->json([
-            'message' => 'Round progression is automatic. Listen to Pusher events for next question rendering.',
-        ], Response::HTTP_GONE);
+        $session = $this->getOwnedSession($id, $user);
+        if (!$session) {
+            return $this->json(['message' => 'Game session not found.'], Response::HTTP_NOT_FOUND);
+        }
+
+        try {
+            $result = $this->gameSessionEngineService->forceAdvanceRound($session);
+        } catch (\RuntimeException $e) {
+            return $this->json(['message' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
+
+        return $this->json($result);
     }
 
     #[Route('/{id}/finish', name: 'finish', methods: ['POST'])]

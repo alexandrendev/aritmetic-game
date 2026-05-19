@@ -6,6 +6,7 @@ use App\Entity\File;
 use App\Entity\User;
 use App\Repository\FileRepository;
 use App\Repository\GuestRepository;
+use App\Service\StorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -31,6 +32,7 @@ class AdminFileController extends AbstractController
         private FileRepository $fileRepository,
         private GuestRepository $guestRepository,
         private EntityManagerInterface $entityManager,
+        private StorageService $storage,
     ) {
     }
 
@@ -118,10 +120,7 @@ class AdminFileController extends AbstractController
             return $this->json(['message' => $error], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $oldPhysicalPath = $this->getPublicDir() . '/' . $file->getPath();
-        if (is_file($oldPhysicalPath)) {
-            @unlink($oldPhysicalPath);
-        }
+        $this->storage->delete($file->getPath());
 
         $path = $this->storeFile($uploadedFile);
         $file->setPath($path)->setUpdatedAt(new \DateTimeImmutable());
@@ -150,10 +149,7 @@ class AdminFileController extends AbstractController
             );
         }
 
-        $physicalPath = $this->getPublicDir() . '/' . $file->getPath();
-        if (is_file($physicalPath)) {
-            @unlink($physicalPath);
-        }
+        $this->storage->delete($file->getPath());
 
         $this->entityManager->remove($file);
         $this->entityManager->flush();
@@ -181,27 +177,21 @@ class AdminFileController extends AbstractController
 
     private function storeFile(UploadedFile $uploadedFile): string
     {
-        $ext = self::MIME_TO_EXT[$uploadedFile->getMimeType()] ?? 'jpg';
-        $filename = uniqid('avatar_', true) . '.' . $ext;
+        $mimeType = $uploadedFile->getMimeType() ?? 'image/jpeg';
+        $ext = self::MIME_TO_EXT[$mimeType] ?? 'jpg';
+        $objectKey = uniqid('avatar_', true) . '.' . $ext;
 
-        $uploadedFile->move($this->getPublicDir() . '/avatars', $filename);
+        $this->storage->upload($objectKey, $uploadedFile->getPathname(), $mimeType);
 
-        return 'avatars/' . $filename;
-    }
-
-    private function getPublicDir(): string
-    {
-        return $this->getParameter('kernel.project_dir') . '/public';
+        return $objectKey;
     }
 
     private function serialize(File $file): array
     {
-        $baseUrl = $this->getParameter('app.public_url');
-
         return [
             'id'        => $file->getId(),
             'path'      => $file->getPath(),
-            'url'       => $baseUrl . '/' . $file->getPath(),
+            'url'       => $this->storage->getPublicUrl($file->getPath()),
             'createdAt' => $file->getCreatedAt()?->format(DATE_ATOM),
             'updatedAt' => $file->getUpdatedAt()?->format(DATE_ATOM),
         ];

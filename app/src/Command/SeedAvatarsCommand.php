@@ -3,61 +3,66 @@
 namespace App\Command;
 
 use App\Entity\File;
+use App\Repository\FileRepository;
+use App\Service\StorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(
     name: 'app:seed:avatars',
-    description: 'Add a short description for your command',
+    description: 'Upload default avatars to MinIO and seed the database.',
 )]
 class SeedAvatarsCommand extends Command
 {
+    private const AVATARS = [
+        'avatar1.png' => 'image/png',
+        'avatar2.png' => 'image/png',
+        'avatar3.png' => 'image/png',
+        'avatar4.png' => 'image/png',
+        'avatar5.png' => 'image/png',
+    ];
+
     public function __construct(
         private EntityManagerInterface $em,
-    )
-    {
+        private StorageService $storage,
+        private FileRepository $fileRepository,
+        private string $projectDir,
+    ) {
         parent::__construct();
     }
 
-    protected function configure(): void
-    {
-        $this
-            ->addArgument('arg1', InputArgument::OPTIONAL, 'Argument description')
-            ->addOption('option1', null, InputOption::VALUE_NONE, 'Option description')
-        ;
-    }
-
-
-    /*
-     * docker compose run --rm php php bin/console app:seed:avatars
-     * */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $avatars = [
-            'avatar1.png',
-            'avatar2.png',
-            'avatar3.png',
-            'avatar4.png',
-            'avatar5.png',
-        ];
+        $avatarsDir = $this->projectDir . '/public/avatars';
 
+        foreach (self::AVATARS as $filename => $mimeType) {
+            $existing = $this->fileRepository->findOneBy(['path' => $filename]);
+            if ($existing) {
+                $output->writeln("Skipping {$filename} (already seeded).");
+                continue;
+            }
 
-        foreach ($avatars as $avatar) {
-            $entity = new File;
-            $entity->setPath('avatars/' . $avatar);
+            $localPath = $avatarsDir . '/' . $filename;
+            if (!is_file($localPath)) {
+                $output->writeln("Skipping {$filename} (file not found at {$localPath}).");
+                continue;
+            }
+
+            $this->storage->upload($filename, $localPath, $mimeType);
+
+            $entity = new File();
+            $entity->setPath($filename);
             $entity->setCreatedAt(new \DateTimeImmutable());
             $this->em->persist($entity);
+
+            $output->writeln("Seeded {$filename}.");
         }
 
         $this->em->flush();
-
-        $output->writeln('Avatares seedados.');
+        $output->writeln('Done.');
 
         return Command::SUCCESS;
     }
