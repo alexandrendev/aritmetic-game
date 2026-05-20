@@ -16,9 +16,7 @@ services:
 
   # ─── Frontend Angular (build a partir do repo irmão) ────────────────────────
   frontend:
-    build:
-      context: ../aritmetic-game-fe
-      dockerfile: Dockerfile
+    image: ghcr.io/alexandrendev/aritmetic-game-fe:sha-9a6091f
     networks:
       - app
     restart: unless-stopped
