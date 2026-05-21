@@ -117,6 +117,49 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose
 
 ---
 
+## Deploy na VPS
+
+O `docker-compose.prod.yml` assume banco PostgreSQL externo e não sobe o serviço `db`. Preencha `DATABASE_URL` no `.env.prod` apontando para o banco já existente.
+
+### 1) Clonar o repositório
+
+```bash
+git clone <repo-url>
+cd aritmetic-game
+```
+
+### 2) Criar o `.env.prod`
+
+```bash
+cp .env.prod.example .env.prod
+# edite .env.prod com os valores reais de produção
+```
+
+### 3) Primeiro deploy
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml build
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+```
+
+Migrations e setup dos transports do Messenger rodam automaticamente no startup do container `php`.
+
+### 4) Atualizar depois de um `git pull`
+
+```bash
+git pull
+docker compose --env-file .env.prod -f docker-compose.prod.yml build
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+```
+
+### 5) Derrubar
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml down
+```
+
+---
+
 ## Sobre a aplicação
 
 ### Ideia geral
