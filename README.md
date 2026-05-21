@@ -144,7 +144,15 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
 
 Migrations e setup dos transports do Messenger rodam automaticamente no startup do container `php`.
 
-### 4) Atualizar depois de um `git pull`
+### 4) Gerar chaves JWT (obrigatório no primeiro deploy)
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml run --rm php php bin/console lexik:jwt:generate-keypair --overwrite --no-interaction
+```
+
+Sem isso o login retorna 500.
+
+### 5) Atualizar depois de um `git pull`
 
 ```bash
 git pull
@@ -152,7 +160,7 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml build
 docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
 ```
 
-### 5) Derrubar
+### 6) Derrubar
 
 ```bash
 docker compose --env-file .env.prod -f docker-compose.prod.yml down
