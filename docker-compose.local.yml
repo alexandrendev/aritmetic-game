@@ -1,0 +1,23 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: app
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app
+
+  php:
+    depends_on:
+      - db
+
+  worker:
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

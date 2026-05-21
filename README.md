@@ -83,6 +83,40 @@ docker compose run --rm php php bin/console messenger:consume async -vv
 
 ---
 
+## Rodar o setup de produção localmente
+
+Use este modo para testar com a imagem do frontend publicada no GHCR e o nginx proxy, sem precisar do `ng serve`.
+
+### 1) Criar o `.env.prod`
+
+Copie o exemplo e preencha os valores:
+
+```bash
+cp .env.prod.example .env.prod
+```
+
+> Já existe um `.env.prod` com valores locais prontos se você só quiser testar na máquina.
+
+### 2) Subir os containers
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.local.yml up -d
+```
+
+O app ficará disponível em `http://localhost:8090`.
+
+> `docker-compose.local.yml` adiciona o serviço `db` (ausente no compose de prod, que assume banco externo) e respeita `PROXY_PORT` definida no `.env.prod` para evitar conflito com a porta 80 da máquina.
+
+Migrations rodam automaticamente no startup do container `php`.
+
+### 3) Derrubar
+
+```bash
+docker compose --env-file .env.prod -f docker-compose.prod.yml -f docker-compose.local.yml down
+```
+
+---
+
 ## Sobre a aplicação
 
 ### Ideia geral
