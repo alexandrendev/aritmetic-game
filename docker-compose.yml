@@ -79,6 +79,16 @@ services:
       - ./app:/app
     entrypoint: ["composer"]
 
+
+  frontend:
+    image: ghcr.io/alexandrendev/aritmetic-game-fe:sha-bb24782
+    ports:
+      - "4200:80"
+    depends_on:
+      - nginx
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   postgres_data:
   minio_data:
