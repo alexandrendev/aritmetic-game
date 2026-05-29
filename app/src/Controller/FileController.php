@@ -26,7 +26,7 @@ class FileController extends AbstractController
             array_map(
                 fn(File $file) => [
                     'id' => $file->getId(),
-                    'url' => $this->storage->getPublicUrl($file->getPath()),
+                    'url' => '/avatars/' . $file->getPath(),
                 ],
                 $files
             )

@@ -191,7 +191,7 @@ class AdminFileController extends AbstractController
         return [
             'id'        => $file->getId(),
             'path'      => $file->getPath(),
-            'url'       => $this->storage->getPublicUrl($file->getPath()),
+            'url'       => '/avatars/' . $file->getPath(),
             'createdAt' => $file->getCreatedAt()?->format(DATE_ATOM),
             'updatedAt' => $file->getUpdatedAt()?->format(DATE_ATOM),
         ];

@@ -47,6 +47,34 @@ class StorageService
         ]);
     }
 
+    /**
+     * Get an object stream together with metadata (content type and length).
+     * Returns null if the object does not exist or an error occurs.
+     *
+     * @return array{stream: \Psr\Http\Message\StreamInterface, contentType?: string, contentLength?: int}|null
+     */
+    public function getObjectStreamWithMeta(string $objectKey): ?array
+    {
+        try {
+            $result = $this->client->getObject([
+                'Bucket' => $this->bucket,
+                'Key' => $objectKey,
+            ]);
+        } catch (\Aws\Exception\AwsException $e) {
+            return null;
+        }
+
+        $stream = $result['Body'];
+        $contentType = $result['ContentType'] ?? null;
+        $contentLength = $result['ContentLength'] ?? null;
+
+        return [
+            'stream' => $stream,
+            'contentType' => $contentType,
+            'contentLength' => $contentLength,
+        ];
+    }
+
     public function getPublicUrl(string $objectKey): string
     {
         return rtrim($this->publicUrl, '/') . '/' . $this->bucket . '/' . ltrim($objectKey, '/');
