@@ -7,7 +7,7 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
-    app.public_url: 'http://localhost:8080'
+    app.public_url: '%env(APP_PUBLIC_URL)%'
     pusher.enabled: '%env(bool:PUSHER_ENABLED)%'
     pusher.app_id: '%env(string:PUSHER_APP_ID)%'
     pusher.app_key: '%env(string:PUSHER_APP_KEY)%'

@@ -22,11 +22,13 @@ class FileController extends AbstractController
     {
         $files = $this->fileRepository->findAll();
 
+        $base = $this->getParameter('app.public_url');
+
         return $this->json(
             array_map(
                 fn(File $file) => [
                     'id' => $file->getId(),
-                    'url' => '/avatars/' . $file->getPath(),
+                    'url' => rtrim($base, '/') . '/avatars/' . ltrim($file->getPath(), '/'),
                 ],
                 $files
             )

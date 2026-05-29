@@ -188,10 +188,12 @@ class AdminFileController extends AbstractController
 
     private function serialize(File $file): array
     {
+        $base = $this->getParameter('app.public_url');
+
         return [
             'id'        => $file->getId(),
             'path'      => $file->getPath(),
-            'url'       => '/avatars/' . $file->getPath(),
+            'url'       => rtrim($base, '/') . '/avatars/' . ltrim($file->getPath(), '/'),
             'createdAt' => $file->getCreatedAt()?->format(DATE_ATOM),
             'updatedAt' => $file->getUpdatedAt()?->format(DATE_ATOM),
         ];
